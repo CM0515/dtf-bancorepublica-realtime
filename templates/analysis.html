@@ -1,0 +1,513 @@
+{% extends "base.html" %}
+
+{% block title %}Análisis IA - DTF Banco de la República{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 mb-1">Análisis Inteligente DTF</h1>
+                <p class="text-muted">Análisis avanzado powered by AI - Tendencias, predicciones y insights</p>
+            </div>
+            <div>
+                <button id="refreshAnalysisBtn" class="btn btn-outline-primary me-2">
+                    <i data-feather="refresh-cw" class="me-1"></i>
+                    Actualizar Análisis
+                </button>
+                <button id="exportAnalysisBtn" class="btn btn-outline-success">
+                    <i data-feather="download" class="me-1"></i>
+                    Exportar Reporte
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Alert -->
+{% if error %}
+<div class="alert alert-danger" role="alert">
+    <i data-feather="alert-circle" class="me-2"></i>
+    {{ error }}
+</div>
+{% endif %}
+
+<!-- Loading States -->
+<div id="loadingState" class="text-center py-5" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando análisis...</span>
+    </div>
+    <h5 class="mt-3">Analizando datos con IA...</h5>
+    <p class="text-muted">Esto puede tomar unos segundos</p>
+</div>
+
+<!-- Analysis Controls -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i data-feather="settings" class="me-2"></i>
+                    Configuración de Análisis
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label for="analysisPeriod" class="form-label">Período de Análisis</label>
+                        <select id="analysisPeriod" class="form-select">
+                            <option value="30" selected>Últimos 30 días</option>
+                            <option value="60">Últimos 60 días</option>
+                            <option value="90">Últimos 90 días</option>
+                            <option value="180">Últimos 6 meses</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="predictionHorizon" class="form-label">Horizonte de Predicción</label>
+                        <select id="predictionHorizon" class="form-select">
+                            <option value="7">7 días</option>
+                            <option value="14" selected>14 días</option>
+                            <option value="30">30 días</option>
+                            <option value="60">60 días</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button id="runAnalysisBtn" class="btn btn-primary w-100">
+                                <i data-feather="zap" class="me-1"></i>
+                                Ejecutar Análisis IA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Market Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="newspaper" class="me-2"></i>
+                    Resumen Ejecutivo del Mercado
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="marketSummaryContent">
+                    <div class="text-center py-4">
+                        <i data-feather="file-text" class="text-muted" style="width: 48px; height: 48px;"></i>
+                        <p class="mt-3 mb-0 text-muted">Haz clic en "Ejecutar Análisis IA" para generar el resumen</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis Results -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="trending-up" class="me-2"></i>
+                    Análisis de Tendencias
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="trendsAnalysisContent">
+                    <div class="text-center py-4">
+                        <i data-feather="bar-chart-2" class="text-muted" style="width: 48px; height: 48px;"></i>
+                        <p class="mt-3 mb-0 text-muted">Análisis de tendencias aparecerá aquí</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="activity" class="me-2"></i>
+                    Análisis de Volatilidad
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="volatilityAnalysisContent">
+                    <div class="text-center py-4">
+                        <i data-feather="activity" class="text-muted" style="width: 32px; height: 32px;"></i>
+                        <p class="mt-2 mb-0 text-muted">Análisis de volatilidad</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Predictions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="target" class="me-2"></i>
+                    Predicciones IA
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="predictionsContent">
+                    <div class="text-center py-4">
+                        <i data-feather="target" class="text-muted" style="width: 48px; height: 48px;"></i>
+                        <p class="mt-3 mb-0 text-muted">Las predicciones aparecerán después del análisis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Insights -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="lightbulb" class="me-2"></i>
+                    Insights Clave y Recomendaciones
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="insightsContent">
+                    <div class="text-center py-4">
+                        <i data-feather="lightbulb" class="text-muted" style="width: 48px; height: 48px;"></i>
+                        <p class="mt-3 mb-0 text-muted">Los insights aparecerán después del análisis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let analysisInProgress = false;
+
+    // Elements
+    const runAnalysisBtn = document.getElementById('runAnalysisBtn');
+    const refreshAnalysisBtn = document.getElementById('refreshAnalysisBtn');
+    const exportAnalysisBtn = document.getElementById('exportAnalysisBtn');
+    const loadingState = document.getElementById('loadingState');
+    const analysisPeriod = document.getElementById('analysisPeriod');
+    const predictionHorizon = document.getElementById('predictionHorizon');
+
+    // Content containers
+    const marketSummaryContent = document.getElementById('marketSummaryContent');
+    const trendsAnalysisContent = document.getElementById('trendsAnalysisContent');
+    const volatilityAnalysisContent = document.getElementById('volatilityAnalysisContent');
+    const predictionsContent = document.getElementById('predictionsContent');
+    const insightsContent = document.getElementById('insightsContent');
+
+    // Run full analysis
+    runAnalysisBtn.addEventListener('click', runFullAnalysis);
+    refreshAnalysisBtn.addEventListener('click', runFullAnalysis);
+
+    async function runFullAnalysis() {
+        if (analysisInProgress) return;
+
+        analysisInProgress = true;
+        setLoadingState(true);
+
+        try {
+            const period = analysisPeriod.value;
+            const horizon = predictionHorizon.value;
+
+            // Run all analyses in parallel
+            const [summaryResult, trendsResult, volatilityResult, predictionResult] = await Promise.all([
+                fetch('/api/ai/summary').then(r => r.json()),
+                fetch(`/api/ai/analyze?days=${period}`).then(r => r.json()),
+                fetch('/api/ai/volatility').then(r => r.json()),
+                fetch(`/api/ai/prediction?horizon=${horizon}`).then(r => r.json())
+            ]);
+
+            // Display results
+            displayMarketSummary(summaryResult);
+            displayTrendsAnalysis(trendsResult);
+            displayVolatilityAnalysis(volatilityResult);
+            displayPredictions(predictionResult);
+            displayInsights(trendsResult, predictionResult);
+
+        } catch (error) {
+            console.error('Error in analysis:', error);
+            showError('Error al ejecutar el análisis. Por favor, intenta nuevamente.');
+        } finally {
+            analysisInProgress = false;
+            setLoadingState(false);
+        }
+    }
+
+    function displayMarketSummary(result) {
+        if (!result.success) {
+            marketSummaryContent.innerHTML = `<div class="alert alert-warning">Error: ${result.error || 'No se pudo generar el resumen'}</div>`;
+            return;
+        }
+
+        const summary = result.summary;
+        marketSummaryContent.innerHTML = `
+            <h6 class="fw-bold text-primary">${summary.titulo || 'Resumen del Mercado DTF'}</h6>
+            <div class="mb-3">
+                <h6 class="h6 text-muted">Resumen Ejecutivo</h6>
+                <p>${summary.resumen_ejecutivo || 'No disponible'}</p>
+            </div>
+            <div class="mb-3">
+                <h6 class="h6 text-muted">Contexto Macroeconómico</h6>
+                <p>${summary.contexto_macroeconomico || 'No disponible'}</p>
+            </div>
+            <div>
+                <h6 class="h6 text-muted">Perspectivas</h6>
+                <p>${summary.outlook || 'No disponible'}</p>
+            </div>
+            <small class="text-muted">Generado: ${new Date(summary.fecha_generacion).toLocaleString()}</small>
+        `;
+    }
+
+    function displayTrendsAnalysis(result) {
+        if (!result.success) {
+            trendsAnalysisContent.innerHTML = `<div class="alert alert-warning">Error: ${result.error || 'No se pudo analizar las tendencias'}</div>`;
+            return;
+        }
+
+        const analysis = result.analysis;
+        const trendIcon = analysis.tendencia_general === 'alcista' ? 'trending-up' : 
+                         analysis.tendencia_general === 'bajista' ? 'trending-down' : 'minus';
+        const trendColor = analysis.tendencia_general === 'alcista' ? 'success' : 
+                          analysis.tendencia_general === 'bajista' ? 'danger' : 'info';
+
+        trendsAnalysisContent.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Tendencia General</h6>
+                        <div class="d-flex align-items-center">
+                            <i data-feather="${trendIcon}" class="text-${trendColor} me-2"></i>
+                            <span class="h5 mb-0 text-${trendColor} text-capitalize">${analysis.tendencia_general || 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Tasa Actual</h6>
+                        <span class="h4 text-primary">${(analysis.tasa_actual || 0).toFixed(4)}%</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <h6 class="text-muted">Volatilidad</h6>
+                        <span class="badge bg-${analysis.volatilidad === 'alta' ? 'danger' : analysis.volatilidad === 'media' ? 'warning' : 'success'} text-capitalize">
+                            ${analysis.volatilidad || 'N/A'}
+                        </span>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="text-muted">Cambio en el Período</h6>
+                        <span class="h5 ${(analysis.cambio_periodo || 0) >= 0 ? 'text-success' : 'text-danger'}">
+                            ${(analysis.cambio_periodo || 0) >= 0 ? '+' : ''}${(analysis.cambio_periodo || 0).toFixed(4)}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="text-muted">Puntos Clave</h6>
+                <ul class="list-unstyled">
+                    ${(analysis.puntos_clave || []).map(punto => `<li class="mb-1"><i data-feather="arrow-right" class="text-primary me-2" style="width: 16px; height: 16px;"></i>${punto}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="text-muted">Resumen</h6>
+                <p class="small">${analysis.resumen || 'No disponible'}</p>
+            </div>
+        `;
+        feather.replace();
+    }
+
+    function displayVolatilityAnalysis(result) {
+        if (!result.success) {
+            volatilityAnalysisContent.innerHTML = `<div class="alert alert-warning">Error: ${result.error || 'No se pudo analizar la volatilidad'}</div>`;
+            return;
+        }
+
+        const volatility = result.volatility;
+        const levelColor = volatility.nivel_volatilidad === 'muy_alta' || volatility.nivel_volatilidad === 'alta' ? 'danger' :
+                          volatility.nivel_volatilidad === 'normal' ? 'warning' : 'success';
+
+        volatilityAnalysisContent.innerHTML = `
+            <div class="text-center mb-3">
+                <div class="display-6 text-${levelColor}">${(volatility.score_volatilidad || 0).toFixed(2)}</div>
+                <small class="text-muted">Score de Volatilidad</small>
+            </div>
+            
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small">Nivel:</span>
+                    <span class="badge bg-${levelColor}">${(volatility.nivel_volatilidad || '').replace('_', ' ').toUpperCase()}</span>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="small text-muted">Interpretación</h6>
+                <p class="small">${volatility.interpretacion || 'No disponible'}</p>
+            </div>
+            
+            <div>
+                <h6 class="small text-muted">Implicaciones</h6>
+                <p class="small">${volatility.implicaciones_inversion || 'No disponible'}</p>
+            </div>
+        `;
+    }
+
+    function displayPredictions(result) {
+        if (!result.success) {
+            predictionsContent.innerHTML = `<div class="alert alert-warning">Error: ${result.error || 'No se pudo generar predicciones'}</div>`;
+            return;
+        }
+
+        const prediction = result.prediction;
+        const directionIcon = prediction.prediccion_direccion === 'alcista' ? 'trending-up' : 
+                             prediction.prediccion_direccion === 'bajista' ? 'trending-down' : 'minus';
+        const directionColor = prediction.prediccion_direccion === 'alcista' ? 'success' : 
+                              prediction.prediccion_direccion === 'bajista' ? 'danger' : 'info';
+
+        predictionsContent.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <i data-feather="${directionIcon}" class="text-${directionColor}" style="width: 48px; height: 48px;"></i>
+                        <div class="mt-2">
+                            <h6 class="text-${directionColor} text-capitalize">${prediction.prediccion_direccion || 'N/A'}</h6>
+                            <small class="text-muted">Dirección Esperada</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <div class="h4 text-primary">${(prediction.probabilidad_direccion || 0).toFixed(1)}%</div>
+                        <small class="text-muted">Probabilidad</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <div class="h6">
+                            ${(prediction.rango_esperado_min || 0).toFixed(4)}% - ${(prediction.rango_esperado_max || 0).toFixed(4)}%
+                        </div>
+                        <small class="text-muted">Rango Esperado</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <h6 class="text-muted">Factores Clave</h6>
+                <ul class="list-unstyled">
+                    ${(prediction.factores_clave || []).map(factor => `<li class="mb-1"><i data-feather="check-circle" class="text-primary me-2" style="width: 16px; height: 16px;"></i>${factor}</li>`).join('')}
+                </ul>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body p-3">
+                            <h6 class="card-title text-success">Optimista</h6>
+                            <p class="card-text small">${prediction.escenarios?.optimista || 'No disponible'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body p-3">
+                            <h6 class="card-title text-primary">Base</h6>
+                            <p class="card-text small">${prediction.escenarios?.base || 'No disponible'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-light">
+                        <div class="card-body p-3">
+                            <h6 class="card-title text-warning">Pesimista</h6>
+                            <p class="card-text small">${prediction.escenarios?.pesimista || 'No disponible'}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        feather.replace();
+    }
+
+    function displayInsights(trendsResult, predictionResult) {
+        const recommendations = trendsResult.success ? trendsResult.analysis.recomendaciones || [] : [];
+        const factors = trendsResult.success ? trendsResult.analysis.factores_economicos || [] : [];
+
+        insightsContent.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">Recomendaciones para Inversionistas</h6>
+                    <ul class="list-unstyled">
+                        ${recommendations.map(rec => `<li class="mb-2"><i data-feather="star" class="text-warning me-2" style="width: 16px; height: 16px;"></i>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted mb-3">Factores Económicos</h6>
+                    <ul class="list-unstyled">
+                        ${factors.map(factor => `<li class="mb-2"><i data-feather="info" class="text-info me-2" style="width: 16px; height: 16px;"></i>${factor}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+        feather.replace();
+    }
+
+    function setLoadingState(loading) {
+        if (loading) {
+            loadingState.style.display = 'block';
+            runAnalysisBtn.disabled = true;
+            refreshAnalysisBtn.disabled = true;
+        } else {
+            loadingState.style.display = 'none';
+            runAnalysisBtn.disabled = false;
+            refreshAnalysisBtn.disabled = false;
+        }
+    }
+
+    function showError(message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <i data-feather="alert-circle" class="me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+        feather.replace();
+    }
+
+    // Export functionality
+    exportAnalysisBtn.addEventListener('click', function() {
+        // Simple export - could be enhanced with proper PDF generation
+        const content = document.querySelector('.container').innerHTML;
+        const blob = new Blob([content], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `analisis-dtf-${new Date().toISOString().split('T')[0]}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // Initialize feather icons
+    feather.replace();
+});
+</script>
+{% endblock %}

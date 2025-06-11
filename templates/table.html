@@ -1,0 +1,619 @@
+{% extends "base.html" %}
+
+{% block title %}Tabla Completa - DTF Banco de la República{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 mb-1">Tabla Completa DTF</h1>
+                <p class="text-muted">Histórico completo de tasas DTF con herramientas avanzadas</p>
+            </div>
+            <div>
+                <button id="exportTableBtn" class="btn btn-outline-success me-2">
+                    <i data-feather="download" class="me-1"></i>
+                    Exportar CSV
+                </button>
+                <button id="refreshTableBtn" class="btn btn-outline-primary">
+                    <i data-feather="refresh-cw" class="me-1"></i>
+                    Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Alert -->
+{% if error %}
+<div class="alert alert-danger" role="alert">
+    <i data-feather="alert-circle" class="me-2"></i>
+    {{ error }}
+</div>
+{% endif %}
+
+<!-- Filters and Search -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i data-feather="filter" class="me-2"></i>
+                    Filtros y Búsqueda
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="searchInput" class="form-label">Buscar</label>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Buscar por fecha o tasa...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="startDate" class="form-label">Fecha Inicio</label>
+                        <input type="date" id="startDate" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="endDate" class="form-label">Fecha Fin</label>
+                        <input type="date" id="endDate" class="form-control">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="itemsPerPage" class="form-label">Elementos por página</label>
+                        <select id="itemsPerPage" class="form-select">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label for="rateRange" class="form-label">Rango de Tasas (%)</label>
+                        <div class="d-flex">
+                            <input type="number" id="minRate" class="form-control me-2" placeholder="Min" step="0.0001">
+                            <input type="number" id="maxRate" class="form-control" placeholder="Max" step="0.0001">
+                        </div>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button id="applyFiltersBtn" class="btn btn-primary me-2">
+                            <i data-feather="search" class="me-1"></i>
+                            Aplicar Filtros
+                        </button>
+                        <button id="clearFiltersBtn" class="btn btn-outline-secondary">
+                            <i data-feather="x" class="me-1"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Summary -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h5 id="totalRecords">{{ pagination.total if pagination else rates|length }}</h5>
+                <small>Total Registros</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h5 id="avgRate">
+                    {% if rates %}
+                        {{ "%.4f"|format(rates|map(attribute='tasa')|list|sum / rates|length) }}%
+                    {% else %}
+                        0.0000%
+                    {% endif %}
+                </h5>
+                <small>Tasa Promedio</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h5 id="maxRate">
+                    {% if rates %}
+                        {{ "%.4f"|format(rates|map(attribute='tasa')|max) }}%
+                    {% else %}
+                        0.0000%
+                    {% endif %}
+                </h5>
+                <small>Tasa Máxima</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h5 id="minRate">
+                    {% if rates %}
+                        {{ "%.4f"|format(rates|map(attribute='tasa')|min) }}%
+                    {% else %}
+                        0.0000%
+                    {% endif %}
+                </h5>
+                <small>Tasa Mínima</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="table" class="me-2"></i>
+                    Datos DTF Completos
+                </h5>
+                <div>
+                    <span class="badge bg-secondary me-2" id="visibleRecordsCount">
+                        {{ rates|length if rates else 0 }} visible
+                    </span>
+                    {% if pagination and pagination.total > 0 %}
+                    <span class="badge bg-secondary">{{ pagination.total }} total</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if rates %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="dtfTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="sortable" data-column="id">
+                                    ID <i data-feather="chevrons-up-down" class="sort-icon"></i>
+                                </th>
+                                <th class="sortable" data-column="fecha">
+                                    Fecha <i data-feather="chevrons-up-down" class="sort-icon"></i>
+                                </th>
+                                <th class="sortable" data-column="tasa">
+                                    Tasa DTF (%) <i data-feather="chevrons-up-down" class="sort-icon"></i>
+                                </th>
+                                <th>Variación</th>
+                                <th class="sortable" data-column="created_at">
+                                    Creado <i data-feather="chevrons-up-down" class="sort-icon"></i>
+                                </th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            {% for rate in rates %}
+                            <tr data-id="{{ rate.id }}" data-fecha="{{ rate.fecha }}" data-tasa="{{ rate.tasa }}">
+                                <td>{{ rate.id }}</td>
+                                <td><strong>{{ rate.fecha }}</strong></td>
+                                <td>
+                                    <span class="badge bg-primary">{{ "%.4f"|format(rate.tasa) }}%</span>
+                                </td>
+                                <td>
+                                    {% if loop.index < rates|length %}
+                                        {% set next_rate = rates[loop.index].tasa %}
+                                        {% set diff = rate.tasa - next_rate %}
+                                        {% if diff > 0 %}
+                                            <span class="text-success">
+                                                <i data-feather="arrow-up" style="width: 14px; height: 14px;"></i>
+                                                +{{ "%.4f"|format(diff) }}
+                                            </span>
+                                        {% elif diff < 0 %}
+                                            <span class="text-danger">
+                                                <i data-feather="arrow-down" style="width: 14px; height: 14px;"></i>
+                                                {{ "%.4f"|format(diff) }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                <i data-feather="minus" style="width: 14px; height: 14px;"></i>
+                                                Sin cambio
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ rate.created_at.strftime('%d/%m/%Y %H:%M') if rate.created_at else 'N/A' }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info view-details" data-rate-id="{{ rate.id }}">
+                                        <i data-feather="eye" style="width: 12px; height: 12px;"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Enhanced Pagination -->
+                {% if pagination and pagination.pages > 1 %}
+                <div class="d-flex justify-content-between align-items-center p-3">
+                    <div>
+                        <small class="text-muted">
+                            Mostrando {{ pagination.per_page * (pagination.page - 1) + 1 }} - 
+                            {{ pagination.per_page * (pagination.page - 1) + rates|length }} 
+                            de {{ pagination.total }} registros
+                        </small>
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            {% if pagination.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dtf_table', page=1) }}">Primera</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dtf_table', page=pagination.prev_num) }}">Anterior</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                                {% if page_num %}
+                                    {% if page_num != pagination.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('dtf_table', page=page_num) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if pagination.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dtf_table', page=pagination.next_num) }}">Siguiente</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('dtf_table', page=pagination.pages) }}">Última</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5">
+                    <i data-feather="inbox" class="text-muted" style="width: 48px; height: 48px;"></i>
+                    <h6 class="mt-3 text-muted">No hay datos disponibles</h6>
+                    <p class="text-muted">Los datos DTF aparecerán aquí una vez recolectados.</p>
+                    <button id="collectDataBtn" class="btn btn-primary mt-2">
+                        <i data-feather="download-cloud" class="me-1"></i>
+                        Recolectar Datos Ahora
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rate Detail Modal -->
+<div class="modal fade" id="rateDetailModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles de Tasa DTF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Elements
+    const searchInput = document.getElementById('searchInput');
+    const startDate = document.getElementById('startDate');
+    const endDate = document.getElementById('endDate');
+    const minRate = document.getElementById('minRate');
+    const maxRate = document.getElementById('maxRate');
+    const itemsPerPage = document.getElementById('itemsPerPage');
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    const exportTableBtn = document.getElementById('exportTableBtn');
+    const refreshTableBtn = document.getElementById('refreshTableBtn');
+    const collectDataBtn = document.getElementById('collectDataBtn');
+    const table = document.getElementById('dtfTable');
+    const tableBody = document.getElementById('tableBody');
+
+    let currentSort = { column: 'fecha', direction: 'desc' };
+    let allData = [];
+
+    // Initialize data from table
+    initializeData();
+
+    // Event listeners
+    applyFiltersBtn.addEventListener('click', applyFilters);
+    clearFiltersBtn.addEventListener('click', clearFilters);
+    exportTableBtn.addEventListener('click', exportToCSV);
+    refreshTableBtn.addEventListener('click', refreshTable);
+    if (collectDataBtn) collectDataBtn.addEventListener('click', collectData);
+    
+    searchInput.addEventListener('input', debounce(applyFilters, 300));
+    
+    // Sorting
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', () => sortTable(header.dataset.column));
+    });
+
+    // View details
+    document.querySelectorAll('.view-details').forEach(btn => {
+        btn.addEventListener('click', (e) => showRateDetails(e.target.closest('button').dataset.rateId));
+    });
+
+    function initializeData() {
+        const rows = tableBody.querySelectorAll('tr');
+        allData = Array.from(rows).map(row => ({
+            id: row.dataset.id,
+            fecha: row.dataset.fecha,
+            tasa: parseFloat(row.dataset.tasa),
+            element: row
+        }));
+    }
+
+    function applyFilters() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const startDateValue = startDate.value;
+        const endDateValue = endDate.value;
+        const minRateValue = minRate.value ? parseFloat(minRate.value) : null;
+        const maxRateValue = maxRate.value ? parseFloat(maxRate.value) : null;
+
+        const filteredData = allData.filter(item => {
+            // Search filter
+            if (searchTerm && !item.fecha.toLowerCase().includes(searchTerm) && !item.tasa.toString().includes(searchTerm)) {
+                return false;
+            }
+
+            // Date range filter
+            if (startDateValue && item.fecha < startDateValue) return false;
+            if (endDateValue && item.fecha > endDateValue) return false;
+
+            // Rate range filter
+            if (minRateValue !== null && item.tasa < minRateValue) return false;
+            if (maxRateValue !== null && item.tasa > maxRateValue) return false;
+
+            return true;
+        });
+
+        updateTable(filteredData);
+        updateStatistics(filteredData);
+    }
+
+    function clearFilters() {
+        searchInput.value = '';
+        startDate.value = '';
+        endDate.value = '';
+        minRate.value = '';
+        maxRate.value = '';
+        
+        updateTable(allData);
+        updateStatistics(allData);
+    }
+
+    function sortTable(column) {
+        if (currentSort.column === column) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.column = column;
+            currentSort.direction = 'asc';
+        }
+
+        const sortedData = [...allData].sort((a, b) => {
+            let aVal = a[column];
+            let bVal = b[column];
+
+            if (column === 'tasa') {
+                aVal = parseFloat(aVal);
+                bVal = parseFloat(bVal);
+            }
+
+            if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+            if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        updateTable(sortedData);
+        updateSortIcons();
+    }
+
+    function updateTable(data) {
+        // Clear table body
+        tableBody.innerHTML = '';
+
+        // Add filtered rows
+        data.forEach(item => {
+            tableBody.appendChild(item.element);
+        });
+
+        // Update visible count
+        document.getElementById('visibleRecordsCount').textContent = `${data.length} visible`;
+
+        // Reinitialize feather icons
+        feather.replace();
+    }
+
+    function updateStatistics(data) {
+        if (data.length === 0) {
+            document.getElementById('totalRecords').textContent = '0';
+            document.getElementById('avgRate').textContent = '0.0000%';
+            document.getElementById('maxRate').textContent = '0.0000%';
+            document.getElementById('minRate').textContent = '0.0000%';
+            return;
+        }
+
+        const rates = data.map(item => item.tasa);
+        const avg = rates.reduce((a, b) => a + b, 0) / rates.length;
+        const max = Math.max(...rates);
+        const min = Math.min(...rates);
+
+        document.getElementById('totalRecords').textContent = data.length;
+        document.getElementById('avgRate').textContent = avg.toFixed(4) + '%';
+        document.getElementById('maxRate').textContent = max.toFixed(4) + '%';
+        document.getElementById('minRate').textContent = min.toFixed(4) + '%';
+    }
+
+    function updateSortIcons() {
+        document.querySelectorAll('.sortable .sort-icon').forEach(icon => {
+            icon.setAttribute('data-feather', 'chevrons-up-down');
+        });
+
+        const currentHeader = document.querySelector(`[data-column="${currentSort.column}"] .sort-icon`);
+        if (currentHeader) {
+            const iconName = currentSort.direction === 'asc' ? 'chevron-up' : 'chevron-down';
+            currentHeader.setAttribute('data-feather', iconName);
+        }
+
+        feather.replace();
+    }
+
+    function exportToCSV() {
+        const visibleRows = tableBody.querySelectorAll('tr');
+        let csvContent = 'ID,Fecha,Tasa DTF (%),Creado\n';
+
+        visibleRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const id = cells[0].textContent.trim();
+            const fecha = cells[1].textContent.trim();
+            const tasa = cells[2].textContent.trim().replace('%', '');
+            const creado = cells[4].textContent.trim();
+            
+            csvContent += `${id},"${fecha}","${tasa}","${creado}"\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `dtf-data-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function refreshTable() {
+        refreshTableBtn.disabled = true;
+        const icon = refreshTableBtn.querySelector('i');
+        icon.style.animation = 'spin 1s linear infinite';
+
+        // Refresh page to get latest data
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    }
+
+    function collectData() {
+        collectDataBtn.disabled = true;
+        collectDataBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Recolectando...';
+
+        fetch('/api/dtf/collect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                alert('Error al recolectar datos: ' + (data.error || 'Error desconocido'));
+                collectDataBtn.disabled = false;
+                collectDataBtn.innerHTML = '<i data-feather="download-cloud" class="me-1"></i>Recolectar Datos Ahora';
+                feather.replace();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error de conexión al recolectar datos');
+            collectDataBtn.disabled = false;
+            collectDataBtn.innerHTML = '<i data-feather="download-cloud" class="me-1"></i>Recolectar Datos Ahora';
+            feather.replace();
+        });
+    }
+
+    function showRateDetails(rateId) {
+        const rate = allData.find(item => item.id === rateId);
+        if (!rate) return;
+
+        const modalBody = document.getElementById('modalBody');
+        modalBody.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Información Básica</h6>
+                    <table class="table table-sm">
+                        <tr><td><strong>ID:</strong></td><td>${rate.id}</td></tr>
+                        <tr><td><strong>Fecha:</strong></td><td>${rate.fecha}</td></tr>
+                        <tr><td><strong>Tasa:</strong></td><td>${rate.tasa.toFixed(4)}%</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <h6>Análisis Rápido</h6>
+                    <p class="small">
+                        <strong>Contexto:</strong> Esta tasa corresponde al ${rate.fecha}. 
+                        La tasa DTF es utilizada como referencia para operaciones financieras en Colombia.
+                    </p>
+                    <p class="small">
+                        <strong>Rango típico:</strong> Las tasas DTF normalmente oscilan entre 8% y 15%.
+                    </p>
+                </div>
+            </div>
+        `;
+
+        const modal = new bootstrap.Modal(document.getElementById('rateDetailModal'));
+        modal.show();
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Add spin animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .sortable { cursor: pointer; }
+        .sortable:hover { background-color: rgba(255,255,255,0.1); }
+        .sort-icon { width: 16px; height: 16px; margin-left: 5px; }
+    `;
+    document.head.appendChild(style);
+
+    // Initialize feather icons
+    feather.replace();
+});
+</script>
+{% endblock %}

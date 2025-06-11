@@ -2,6 +2,7 @@ from flask import render_template, jsonify, request
 from app import app
 from models import TasaDTF
 from dtf_collector import collect_dtf_data, get_collection_status
+from ai_analyzer import dtf_analyzer
 import logging
 from datetime import datetime, timedelta
 
@@ -100,11 +101,23 @@ def api_all_dtf():
 def api_collect_dtf():
     """API endpoint to manually trigger DTF data collection"""
     try:
+        # Get initial count
+        initial_count = TasaDTF.query.count()
+        
         success = collect_dtf_data()
         if success:
+            # Get final count and status
+            final_count = TasaDTF.query.count()
+            new_records = final_count - initial_count
+            status = get_collection_status()
+            
             return jsonify({
                 'success': True,
-                'message': 'DTF data collection completed successfully'
+                'message': f'DTF data collection completed successfully. {new_records} new records added.',
+                'records_added': new_records,
+                'total_records': final_count,
+                'latest_rate': status.get('latest_rate'),
+                'latest_date': status.get('latest_date')
             })
         else:
             return jsonify({
@@ -113,6 +126,54 @@ def api_collect_dtf():
             }), 500
     except Exception as e:
         logger.error(f"Error in manual DTF collection: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/system/status')
+def api_system_status():
+    """API endpoint to get overall system status"""
+    try:
+        dtf_status = get_collection_status()
+        latest_rates = TasaDTF.get_latest(7)
+        
+        # Calculate basic metrics
+        rates_values = [rate.tasa for rate in latest_rates] if latest_rates else []
+        current_rate = rates_values[0] if rates_values else 0
+        avg_week = sum(rates_values) / len(rates_values) if rates_values else 0
+        
+        # Determine trend
+        if len(rates_values) >= 2:
+            recent_avg = sum(rates_values[:3]) / 3 if len(rates_values) >= 3 else rates_values[0]
+            older_avg = sum(rates_values[-3:]) / 3 if len(rates_values) >= 3 else rates_values[-1]
+            trend = "up" if recent_avg > older_avg else "down" if recent_avg < older_avg else "stable"
+        else:
+            trend = "stable"
+        
+        return jsonify({
+            'success': True,
+            'system_status': {
+                'data_collection': {
+                    'status': 'active',
+                    'total_records': dtf_status.get('total_records', 0),
+                    'latest_update': dtf_status.get('latest_date'),
+                    'next_scheduled': '09:00 AM daily'
+                },
+                'current_metrics': {
+                    'current_rate': round(current_rate, 4),
+                    'weekly_average': round(avg_week, 4),
+                    'trend': trend,
+                    'data_quality': 'good' if dtf_status.get('total_records', 0) > 0 else 'no_data'
+                },
+                'ai_services': {
+                    'status': 'available',
+                    'features': ['trend_analysis', 'predictions', 'market_summary', 'volatility_analysis']
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting system status: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -133,6 +194,94 @@ def api_dtf_status():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/ai/analyze')
+def api_ai_analyze():
+    """API endpoint for AI analysis of DTF trends"""
+    try:
+        days = request.args.get('days', 30, type=int)
+        days = min(max(days, 7), 365)  # Limit between 7 and 365 days
+        
+        analysis = dtf_analyzer.analyze_dtf_trends(days)
+        return jsonify({
+            'success': True,
+            'analysis': analysis
+        })
+    except Exception as e:
+        logger.error(f"Error in AI analysis: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/ai/summary')
+def api_ai_summary():
+    """API endpoint for AI market summary"""
+    try:
+        summary = dtf_analyzer.generate_market_summary()
+        return jsonify({
+            'success': True,
+            'summary': summary
+        })
+    except Exception as e:
+        logger.error(f"Error generating AI summary: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/ai/prediction')
+def api_ai_prediction():
+    """API endpoint for AI rate predictions"""
+    try:
+        horizon = request.args.get('horizon', 14, type=int)
+        horizon = min(max(horizon, 3), 60)  # Limit between 3 and 60 days
+        
+        prediction = dtf_analyzer.predict_rate_movement(horizon)
+        return jsonify({
+            'success': True,
+            'prediction': prediction
+        })
+    except Exception as e:
+        logger.error(f"Error in AI prediction: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/ai/volatility')
+def api_ai_volatility():
+    """API endpoint for AI volatility analysis"""
+    try:
+        volatility = dtf_analyzer.analyze_volatility()
+        return jsonify({
+            'success': True,
+            'volatility': volatility
+        })
+    except Exception as e:
+        logger.error(f"Error in volatility analysis: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/analysis')
+def analysis_page():
+    """AI Analysis page"""
+    try:
+        # Get basic data for the page
+        latest_rates = TasaDTF.get_latest(30)
+        status = get_collection_status()
+        
+        return render_template('analysis.html',
+                             latest_rates=latest_rates,
+                             status=status)
+    except Exception as e:
+        logger.error(f"Error loading analysis page: {e}")
+        return render_template('analysis.html',
+                             latest_rates=[],
+                             status={},
+                             error="Error loading analysis page")
 
 @app.route('/table')
 def dtf_table():
