@@ -170,17 +170,17 @@
                         <thead class="table-dark">
                             <tr>
                                 <th class="sortable" data-column="id">
-                                    ID <i data-feather="chevrons-up-down" class="sort-icon"></i>
+                                    ID <i data-feather="chevron-up" class="sort-icon"></i>
                                 </th>
                                 <th class="sortable" data-column="fecha">
-                                    Fecha <i data-feather="chevrons-up-down" class="sort-icon"></i>
+                                    Fecha <i data-feather="chevron-up" class="sort-icon"></i>
                                 </th>
                                 <th class="sortable" data-column="tasa">
-                                    Tasa DTF (%) <i data-feather="chevrons-up-down" class="sort-icon"></i>
+                                    Tasa DTF (%) <i data-feather="chevron-up" class="sort-icon"></i>
                                 </th>
                                 <th>Variación</th>
                                 <th class="sortable" data-column="created_at">
-                                    Creado <i data-feather="chevrons-up-down" class="sort-icon"></i>
+                                    Creado <i data-feather="chevron-up" class="sort-icon"></i>
                                 </th>
                                 <th>Acciones</th>
                             </tr>
@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateSortIcons() {
         document.querySelectorAll('.sortable .sort-icon').forEach(icon => {
-            icon.setAttribute('data-feather', 'chevrons-up-down');
+            icon.setAttribute('data-feather', 'chevron-up');
         });
 
         const currentHeader = document.querySelector(`[data-column="${currentSort.column}"] .sort-icon`);

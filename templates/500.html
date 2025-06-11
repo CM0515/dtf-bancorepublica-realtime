@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Error del Servidor - DTF Banco de la República{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="py-5">
+                <i data-feather="alert-triangle" class="text-warning" style="width: 80px; height: 80px;"></i>
+                <h1 class="display-4 mt-4">500</h1>
+                <h3 class="text-muted">Error del Servidor</h3>
+                <p class="lead">
+                    Ha ocurrido un error interno. Nuestro equipo ha sido notificado.
+                </p>
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary me-3">
+                        <i data-feather="home" class="me-1"></i>
+                        Volver al Dashboard
+                    </a>
+                    <button onclick="window.location.reload()" class="btn btn-outline-secondary">
+                        <i data-feather="refresh-cw" class="me-1"></i>
+                        Intentar de Nuevo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    feather.replace();
+</script>
+{% endblock %}

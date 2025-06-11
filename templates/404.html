@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Página No Encontrada - DTF Banco de la República{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="py-5">
+                <i data-feather="search" class="text-muted" style="width: 80px; height: 80px;"></i>
+                <h1 class="display-4 mt-4">404</h1>
+                <h3 class="text-muted">Página No Encontrada</h3>
+                <p class="lead">
+                    La página que buscas no existe o ha sido movida.
+                </p>
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary me-3">
+                        <i data-feather="home" class="me-1"></i>
+                        Ir al Dashboard
+                    </a>
+                    <a href="{{ url_for('dtf_table') }}" class="btn btn-outline-secondary">
+                        <i data-feather="table" class="me-1"></i>
+                        Ver Tabla DTF
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    feather.replace();
+</script>
+{% endblock %}

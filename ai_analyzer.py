@@ -6,7 +6,11 @@ from typing import List, Dict, Any, Optional
 from openai import OpenAI
 from models import TasaDTF
 from app import app
+from dotenv import load_dotenv
+# Load environment variables
+load_dotenv()
 
+# Configure logging
 logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
