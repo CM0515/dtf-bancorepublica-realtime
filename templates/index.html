@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DTF Banco de la República{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="h2 mb-1">Dashboard DTF</h1>
+                <p class="text-muted">Tasas de Interés - Depósito a Término Fijo</p>
+            </div>
+            <div>
+                <button id="refreshBtn" class="btn btn-outline-primary">
+                    <i data-feather="refresh-cw" class="me-1"></i>
+                    Actualizar Datos
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Alert -->
+{% if error %}
+<div class="alert alert-danger" role="alert">
+    <i data-feather="alert-circle" class="me-2"></i>
+    {{ error }}
+</div>
+{% endif %}
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-subtitle mb-2 text-muted">Tasa Actual</h6>
+                        <h4 class="card-title mb-0">{{ "%.4f"|format(stats.current_rate or 0) }}%</h4>
+                    </div>
+                    <i data-feather="activity" class="text-primary"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-subtitle mb-2 text-muted">Promedio (30 días)</h6>
+                        <h4 class="card-title mb-0">{{ "%.4f"|format(stats.avg_rate or 0) }}%</h4>
+                    </div>
+                    <i data-feather="bar-chart-2" class="text-info"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-subtitle mb-2 text-muted">Máxima (30 días)</h6>
+                        <h4 class="card-title mb-0">{{ "%.4f"|format(stats.max_rate or 0) }}%</h4>
+                    </div>
+                    <i data-feather="trending-up" class="text-success"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-subtitle mb-2 text-muted">Mínima (30 días)</h6>
+                        <h4 class="card-title mb-0">{{ "%.4f"|format(stats.min_rate or 0) }}%</h4>
+                    </div>
+                    <i data-feather="trending-down" class="text-danger"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i data-feather="line-chart" class="me-2"></i>
+                    Evolución DTF - Últimos 30 días
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if latest_rates %}
+                <div class="chart-container">
+                    <canvas id="dtfChart"></canvas>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i data-feather="database" class="text-muted" style="width: 48px; height: 48px;"></i>
+                    <h6 class="mt-3 text-muted">No hay datos disponibles</h6>
+                    <p class="text-muted">Los datos DTF se están recolectando. Intenta actualizar en unos momentos.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Data Table -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i data-feather="list" class="me-2"></i>
+                    Datos Recientes
+                </h5>
+                <a href="{{ url_for('dtf_table') }}" class="btn btn-sm btn-outline-secondary">
+                    Ver Todo
+                    <i data-feather="external-link" class="ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if latest_rates %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tasa DTF (%)</th>
+                                <th>Variación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for rate in latest_rates[:10] %}
+                            <tr>
+                                <td>
+                                    <strong>{{ rate.fecha }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ "%.4f"|format(rate.tasa) }}%</span>
+                                </td>
+                                <td>
+                                    {% if loop.index < latest_rates|length %}
+                                        {% set prev_rate = latest_rates[loop.index].tasa %}
+                                        {% set diff = rate.tasa - prev_rate %}
+                                        {% if diff > 0 %}
+                                            <span class="text-success">
+                                                <i data-feather="arrow-up" style="width: 14px; height: 14px;"></i>
+                                                +{{ "%.4f"|format(diff) }}
+                                            </span>
+                                        {% elif diff < 0 %}
+                                            <span class="text-danger">
+                                                <i data-feather="arrow-down" style="width: 14px; height: 14px;"></i>
+                                                {{ "%.4f"|format(diff) }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                <i data-feather="minus" style="width: 14px; height: 14px;"></i>
+                                                Sin cambio
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i data-feather="inbox" class="text-muted" style="width: 32px; height: 32px;"></i>
+                    <p class="mt-2 mb-0 text-muted">No hay datos recientes disponibles</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Information -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i data-feather="info" class="me-2"></i>
+                    Estado de la Recolección
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <small class="text-muted">Total de Registros:</small>
+                        <div><strong>{{ status.total_records or 0 }}</strong></div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <small class="text-muted">Último Dato:</small>
+                        <div><strong>{{ status.latest_date or 'N/A' }}</strong></div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <small class="text-muted">Última Tasa:</small>
+                        <div><strong>{{ "%.4f"|format(status.latest_rate or 0) }}%</strong></div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-2">
+                        <small class="text-muted">Tendencia (7 días):</small>
+                        <div>
+                            <span class="trend-{{ stats.trend or 'stable' }}">
+                                {% if stats.trend == 'up' %}
+                                    <i data-feather="trending-up" style="width: 16px; height: 16px;"></i> Subiendo
+                                {% elif stats.trend == 'down' %}
+                                    <i data-feather="trending-down" style="width: 16px; height: 16px;"></i> Bajando
+                                {% else %}
+                                    <i data-feather="minus" style="width: 16px; height: 16px;"></i> Estable
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize chart if data is available
+    {% if latest_rates %}
+    const chartData = {
+        labels: [{% for rate in latest_rates|reverse %}'{{ rate.fecha }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Tasa DTF (%)',
+            data: [{% for rate in latest_rates|reverse %}{{ rate.tasa }}{% if not loop.last %},{% endif %}{% endfor %}],
+            borderColor: 'rgb(13, 110, 253)',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4
+        }]
+    };
+    
+    initDTFChart('dtfChart', chartData);
+    {% endif %}
+    
+    // Refresh button functionality
+    const refreshBtn = document.getElementById('refreshBtn');
+    refreshBtn.addEventListener('click', function() {
+        const icon = this.querySelector('i');
+        const text = this.querySelector('span') || this;
+        
+        // Show loading state
+        icon.style.animation = 'spin 1s linear infinite';
+        this.disabled = true;
+        
+        // Call refresh API
+        fetch('/api/dtf/collect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload page after successful update
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                alert('Error al actualizar los datos: ' + (data.error || 'Error desconocido'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error de conexión al actualizar los datos');
+        })
+        .finally(() => {
+            // Reset button state
+            icon.style.animation = '';
+            this.disabled = false;
+        });
+    });
+    
+    // Reinitialize feather icons after dynamic content
+    feather.replace();
+});
+
+// Add spin animation for refresh icon
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

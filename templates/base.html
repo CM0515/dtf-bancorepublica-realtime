@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DTF Banco de la República{% endblock %}</title>
+    
+    <!-- Bootstrap CSS with Replit theme -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <style>
+        .stat-card {
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+        .trend-up {
+            color: var(--bs-success);
+        }
+        .trend-down {
+            color: var(--bs-danger);
+        }
+        .trend-stable {
+            color: var(--bs-info);
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 1rem 0;
+        }
+        .table-container {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .navbar-brand {
+            font-weight: 600;
+        }
+        .footer {
+            margin-top: 3rem;
+            padding: 2rem 0;
+            border-top: 1px solid var(--bs-border-color);
+        }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i data-feather="trending-up" class="me-2"></i>
+                DTF - Banco de la República
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                            <i data-feather="home" class="me-1"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'dtf_table' %}active{% endif %}" href="{{ url_for('dtf_table') }}">
+                            <i data-feather="table" class="me-1"></i>
+                            Tabla Completa
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container my-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer bg-dark">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>DTF - Tasas de Interés</h6>
+                    <p class="small text-muted">
+                        Datos oficiales del Banco de la República de Colombia.
+                        Actualización diaria automatizada.
+                    </p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="small text-muted">
+                        Fuente: <a href="https://www.banrep.gov.co" target="_blank" class="text-decoration-none">
+                            Banco de la República
+                        </a>
+                    </p>
+                    <p class="small text-muted">
+                        API SDMX: Datos en tiempo real
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Initialize Feather Icons -->
+    <script>
+        feather.replace();
+    </script>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
